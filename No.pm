@@ -1,6 +1,6 @@
 package Acme::No;
 
-use 5.006;
+use 5.00503;
 
 use Carp qw(croak);
 use UNIVERSAL ();
@@ -9,16 +9,17 @@ use strict;
 
 use Filter::Util::Call;
 
-our $VERSION = '0.02';
+$Acme::No::VERSION = '0.03';
 
 sub import {
-  my ($type, @arguments) = @_ ;
 
   filter_add(sub {
 
-    if ((my $status = filter_read) > 0) {
+    my $status = 0; 
 
-      my ($no, $module, $version) = m/(no)\s+([\w\-:]*)\s*(\d+[._]?(\d+[._]?)*)/;
+    if (($status = filter_read) > 0) {
+
+      my (undef, $no, $module, $version) = m/(^|;)\s*(no)\s+([\w\-:]*)\s*(\d+[.]?(\d+[._]?)*)/;
 
       if ($no && $module && $version) {
         # no mod_perl 2.0;
@@ -42,15 +43,22 @@ sub import {
       if ($no && $version) {
         # no 6.0;
 
-        # perl version foo
+        # perl version foo (ugh)
         my ($rev, $ver, $subver) = split '[._]', $version;
 
-        if ($ver > 100) {
-          $subver = $ver % 100;
+        if ($ver > 1000) {              # 5.006001
+          $subver = ($ver % 1000);
+          $ver = int($ver / 1000);
+        }
+        elsif ($ver > 100) {            # 5.00503
+          $subver = ($ver % 100) * 10;
           $ver = int($ver / 100);
         }
+        else {                          # silence undef warnings
+          $subver ||= 0;
+        }
 
-        $version = $rev + ($ver/1000) + ($subver/100000);
+        $version = $rev + ($ver/1000) + ($subver/1000000);
 
         croak "Perl v$] too high--version less than v$version required"
           unless $] < $version;
@@ -58,10 +66,10 @@ sub import {
 
       # wipe away user code so the real perl doesn't
       # barf on our implementation
-      s/(no)\s+([\w\-:]*)\s*(\d+[._]?(\d+[._]?)*)//;
-
-      return $status;
+      s/(no)\s+([\w\-:]*)\s*(\d+[.]?(\d+[._]?)*)//;
     }
+
+    return $status;
   });
 }
 
@@ -89,7 +97,7 @@ Acme::No - makes no() work the way I want it to
 
 ok, first the appropriate pod:
 
-$ perldoc -f no 
+$ perldoc C<-f> no 
   =item no Module VERSION LIST
 
   =item no Module VERSION
@@ -146,7 +154,7 @@ probably lots
 
 =head1 SEE ALSO
 
-Filter::Util::Call, perldoc -f use, perldoc -f no,
+Filter::Util::Call, perldoc C<-f> use, perldoc C<-f> no,
 http://www.mail-archive.com/perl5-porters@perl.org/msg53742.html,
 http://www.mail-archive.com/perl5-porters@perl.org/msg53752.html,
 

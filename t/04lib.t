@@ -1,8 +1,9 @@
 
-use Test::More tests => 4;
+use Test::More;
 
 use IO::File;
-require CGI;
+use CGI qw(-no_debug);
+use File::Spec;
 
 use strict;
 
@@ -40,7 +41,7 @@ $fh = $filehandles[2];
 print $fh <<EOF;
 use Acme::No;
 no CGI $good_no_test;
-use CGI $good_test;
+use CGI $good_test qw(-no_debug);
 my \$q = CGI->new or die;
 die unless UNIVERSAL::isa(\$q, 'CGI');
 1;
@@ -57,15 +58,22 @@ foreach my $filehandle (@filehandles) {
   $filehandle->close;
 }
 
-my $rc = do $filenames[0];
-ok($rc, "use CGI $good_test ($filenames[0])");
+if ($] < 5.008) {
+  plan skip_all => "perl $]: see the INSTALL document for why";
+}
+else {
+  plan tests => scalar @filenames;
+}
 
-$rc = do $filenames[1];
-ok(!$rc, "use CGI $bad_test ($filenames[1]");
+foreach my $file (@filenames) {
+  my $rc = do $file;
 
-$rc = do $filenames[2];
-ok($rc, "no CGI $good_no_test ($filenames[2]");
+  if ($file =~ m/bad/) {
+    ok(!$rc, "$file");
+  }
+  else {
+    ok($rc, "$file");
+  }
+}
 
-$rc = do $filenames[3];
-ok(!$rc, "no CGI $bad_no_test ($filenames[3]");
-
+1;

@@ -1,5 +1,4 @@
-
-use Test::More tests => 10;
+use Test::More;
 
 use IO::File;
 use File::Spec;
@@ -20,6 +19,10 @@ push @filenames, File::Spec->catfile(qw(t lib perl-no-bad4.pl));
 push @filenames, File::Spec->catfile(qw(t lib perl-no-bad5.pl));
 push @filenames, File::Spec->catfile(qw(t lib perl-string-bad.pl));
 push @filenames, File::Spec->catfile(qw(t lib perl-string-good.pl));
+push @filenames, File::Spec->catfile(qw(t lib perl-comment1.pl));
+push @filenames, File::Spec->catfile(qw(t lib perl-comment2.pl));
+push @filenames, File::Spec->catfile(qw(t lib perl-multi-good.pl));
+push @filenames, File::Spec->catfile(qw(t lib perl-multi-bad.pl));
 
 foreach my $file (@filenames) {
   push @filehandles, IO::File->new(">$file") or die "cannot open file: $!";
@@ -30,9 +33,12 @@ my $bad_perl = $] + 1;
 my $good_no_perl = $] + 1;
 my $bad_no_perl = $];
 
-my $rev = $Config{PERL_REVISION};
-my $ver = $Config{PERL_VERSION};
-my $subver = $Config{PERL_SUBVERSION};
+# these are only defined in perl >= 5.006
+# so supress warnings with 5.00503 (where the 
+# tests aren't run anyway)
+my $rev = $Config{PERL_REVISION} || 0;
+my $ver = $Config{PERL_VERSION} || 0;
+my $subver = $Config{PERL_SUBVERSION} || 0;
 
 my $fh = $filehandles[0];
 print $fh <<EOF;
@@ -104,36 +110,54 @@ no v$good_no_perl;
 1;
 EOF
 
+$fh = $filehandles[10];
+print $fh <<EOF;
+use Acme::No;
+# no v$good_no_perl;
+1;
+EOF
+
+$fh = $filehandles[11];
+print $fh <<EOF;
+use Acme::No;
+# no v$bad_no_perl;
+1;
+EOF
+
+$fh = $filehandles[12];
+print $fh <<EOF;
+use Acme::No;
+use IO::File; no v$good_no_perl;
+1;
+EOF
+
+$fh = $filehandles[13];
+print $fh <<EOF;
+use Acme::No;
+use IO::File; no v$bad_no_perl;
+1;
+EOF
+
 foreach my $filehandle (@filehandles) {
   $filehandle->close;
 }
 
-my $rc = do $filenames[0];
-ok($rc, "use $good_perl ($filenames[0])");
+if ($] < 5.008) {
+  plan skip_all => "perl $]: see the INSTALL document for why";
+}
+else {
+  plan tests => scalar @filenames;
+}
 
-$rc = do $filenames[1];
-ok(!$rc, "use $bad_perl ($filenames[1])");
+foreach my $file (@filenames) {
+  my $rc = do $file;
+  
+  if ($file =~ m/bad/) {
+    ok(!$rc, "$file");
+  }
+  else {
+    ok($rc, "$file");
+  }
+}
 
-$rc = do $filenames[2];
-ok($rc, "no $good_no_perl ($filenames[2])");
-
-$rc = do $filenames[3];
-ok(!$rc, "no $bad_no_perl ($filenames[3])");
-
-$rc = do $filenames[4];
-ok(!$rc, "no $rev.$ver.$subver ($filenames[4])");
-
-$rc = do $filenames[5];
-ok(!$rc, "no $rev.$ver ($filenames[5])");
-
-$rc = do $filenames[6];
-ok(!$rc, "no 5.00503 ($filenames[6])");
-
-$rc = do $filenames[7];
-ok(!$rc, "no 5.005_03 ($filenames[7])");
-
-$rc = do $filenames[8];
-ok(!$rc, "no v$bad_no_perl ($filenames[8])");
-
-$rc = do $filenames[9];
-ok($rc, "no v$good_no_perl ($filenames[9])");
+1;
