@@ -1,25 +1,29 @@
 
-use Test::More tests => 7;
+use Test::More tests => 10;
 
 use IO::File;
 use File::Spec;
 use Config;
 
-my $good_file = File::Spec->catfile(qw(t lib perl-good.pl));
-my $bad_file = File::Spec->catfile(qw(t lib perl-bad.pl));
-my $good_no_file = File::Spec->catfile(qw(t lib perl-no-good.pl));
-my $bad_no_file = File::Spec->catfile(qw(t lib perl-no-bad.pl));
-my $bad_no_file2 = File::Spec->catfile(qw(t lib perl-no-bad2.pl));
-my $string_bad_file = File::Spec->catfile(qw(t lib perl-string-bad.pl));
-my $string_good_file = File::Spec->catfile(qw(t lib perl-string-good.pl));
+use strict;
 
-$good_file = IO::File->new(">$good_file") or die "cannot open perl-good.pl: $!";
-$bad_file = IO::File->new(">$bad_file") or die "cannot open perl-bad.pl: $!";
-$good_no_file = IO::File->new(">$good_no_file") or die "cannot open perl-no-good.pl: $!";
-$bad_no_file = IO::File->new(">$bad_no_file") or die "cannot open perl-no-bad.pl: $!";
-$bad_no_file2 = IO::File->new(">$bad_no_file2") or die "cannot open perl-no-bad2.pl: $!";
-$string_bad_file = IO::File->new(">$string_bad_file") or die "cannot open perl-string-bad.pl: $!";
-$string_good_file = IO::File->new(">$string_good_file") or die "cannot open perl-string-good.pl: $!";
+my @filenames;
+my @filehandles;
+
+push @filenames, File::Spec->catfile(qw(t lib perl-good.pl));
+push @filenames, File::Spec->catfile(qw(t lib perl-bad.pl));
+push @filenames, File::Spec->catfile(qw(t lib perl-no-good.pl));
+push @filenames, File::Spec->catfile(qw(t lib perl-no-bad.pl));
+push @filenames, File::Spec->catfile(qw(t lib perl-no-bad2.pl));
+push @filenames, File::Spec->catfile(qw(t lib perl-no-bad3.pl));
+push @filenames, File::Spec->catfile(qw(t lib perl-no-bad4.pl));
+push @filenames, File::Spec->catfile(qw(t lib perl-no-bad5.pl));
+push @filenames, File::Spec->catfile(qw(t lib perl-string-bad.pl));
+push @filenames, File::Spec->catfile(qw(t lib perl-string-good.pl));
+
+foreach my $file (@filenames) {
+  push @filehandles, IO::File->new(">$file") or die "cannot open file: $!";
+}
 
 my $good_perl = $];
 my $bad_perl = $] + 1;
@@ -30,72 +34,106 @@ my $rev = $Config{PERL_REVISION};
 my $ver = $Config{PERL_VERSION};
 my $subver = $Config{PERL_SUBVERSION};
 
-print $good_file <<EOF;
+my $fh = $filehandles[0];
+print $fh <<EOF;
 use Acme::No;
 use $good_perl;
 1;
 EOF
 
-print $bad_file <<EOF;
+$fh = $filehandles[1];
+print $fh <<EOF;
 use Acme::No;
 use $bad_perl;
 1;
 EOF
 
-print $good_no_file <<EOF;
+$fh = $filehandles[2];
+print $fh <<EOF;
 use Acme::No;
 no $good_no_perl;
 1;
 EOF
 
-print $bad_no_file <<EOF;
+$fh = $filehandles[3];
+print $fh <<EOF;
 use Acme::No;
 no $bad_no_perl;
 1;
 EOF
 
-print $bad_no_file2 <<EOF;
+$fh = $filehandles[4];
+print $fh <<EOF;
 use Acme::No;
 no $rev.$ver.$subver;
 1;
 EOF
 
-print $string_bad_file <<EOF;
+$fh = $filehandles[5];
+print $fh <<EOF;
+use Acme::No;
+no $rev.$ver;
+1;
+EOF
+
+$fh = $filehandles[6];
+print $fh <<EOF;
+use Acme::No;
+no 5.00503;
+1;
+EOF
+
+$fh = $filehandles[7];
+print $fh <<EOF;
+use Acme::No;
+no 5.005_03;
+1;
+EOF
+
+$fh = $filehandles[8];
+print $fh <<EOF;
 use Acme::No;
 no v$bad_no_perl;
 1;
 EOF
 
-print $string_good_file <<EOF;
+$fh = $filehandles[9];
+print $fh <<EOF;
 use Acme::No;
 no v$good_no_perl;
 1;
 EOF
 
-undef $good_file;
-undef $bad_file;
-undef $good_no_file;
-undef $bad_no_file;
-undef $string_good_file;
-undef $string_bad_file;
+foreach my $filehandle (@filehandles) {
+  $filehandle->close;
+}
 
-my $rc = do 't/lib/perl-good.pl';
-ok($rc, "use an ok version of perl");
+my $rc = do $filenames[0];
+ok($rc, "use $good_perl ($filenames[0])");
 
-$rc = do 't/lib/perl-bad.pl';
-ok(!$rc, "use a version of perl that's too high");
+$rc = do $filenames[1];
+ok(!$rc, "use $bad_perl ($filenames[1])");
 
-$rc = do 't/lib/perl-no-good.pl';
-ok($rc, "no an ok version of perl");
+$rc = do $filenames[2];
+ok($rc, "no $good_no_perl ($filenames[2])");
 
-$rc = do 't/lib/perl-no-bad.pl';
-ok(!$rc, "no a version of perl that's too high");
+$rc = do $filenames[3];
+ok(!$rc, "no $bad_no_perl ($filenames[3])");
 
-$rc = do 't/lib/perl-no-bad2.pl';
-ok(!$rc, "no a version of perl that's too high");
+$rc = do $filenames[4];
+ok(!$rc, "no $rev.$ver.$subver ($filenames[4])");
 
-$rc = do 't/lib/perl-string-good.pl';
-ok($rc, "no an ok version of perl in form v5.6.1");
+$rc = do $filenames[5];
+ok(!$rc, "no $rev.$ver ($filenames[5])");
 
-$rc = do 't/lib/perl-string-bad.pl';
-ok(!$rc, "no a version of perl that's too high in form v5.6.1");
+$rc = do $filenames[6];
+ok(!$rc, "no 5.00503 ($filenames[6])");
+
+$rc = do $filenames[7];
+ok(!$rc, "no 5.005_03 ($filenames[7])");
+
+$rc = do $filenames[8];
+ok(!$rc, "no v$bad_no_perl ($filenames[8])");
+
+$rc = do $filenames[9];
+ok($rc, "no v$good_no_perl ($filenames[9])");

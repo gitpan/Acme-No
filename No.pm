@@ -9,7 +9,7 @@ use strict;
 
 use Filter::Util::Call;
 
-our $VERSION = '0.01';
+our $VERSION = '0.02';
 
 sub import {
   my ($type, @arguments) = @_ ;
@@ -18,7 +18,7 @@ sub import {
 
     if ((my $status = filter_read) > 0) {
 
-      my ($no, $module, $version) = m/(no)\s+([\w\-:]*)\s*(\d+\.?(\d+\.?)*)/;
+      my ($no, $module, $version) = m/(no)\s+([\w\-:]*)\s*(\d+[._]?(\d+[._]?)*)/;
 
       if ($no && $module && $version) {
         # no mod_perl 2.0;
@@ -43,9 +43,14 @@ sub import {
         # no 6.0;
 
         # perl version foo
-        my ($rev, $ver, $subver) = split '\.', $version;
-        $version = $rev + ($ver/1000) + ($subver/100000)
-          if defined $subver;
+        my ($rev, $ver, $subver) = split '[._]', $version;
+
+        if ($ver > 100) {
+          $subver = $ver % 100;
+          $ver = int($ver / 100);
+        }
+
+        $version = $rev + ($ver/1000) + ($subver/100000);
 
         croak "Perl v$] too high--version less than v$version required"
           unless $] < $version;
@@ -53,7 +58,7 @@ sub import {
 
       # wipe away user code so the real perl doesn't
       # barf on our implementation
-      s/(no)\s+([\w\-:]*)\s*(\d+\.?(\d+\.?)*)//;
+      s/(no)\s+([\w\-:]*)\s*(\d+[._]?(\d+[._]?)*)//;
 
       return $status;
     }

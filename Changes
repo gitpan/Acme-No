@@ -5,3 +5,5 @@ Revision history for Perl extension Acme::No.
 		-AXn Acme::No
         - helpful feeback and comments from Rafael Garcia-Suarez
 
+0.02  08.13.2001
+	- fixed perl version foo and added more tests

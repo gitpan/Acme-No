@@ -2,37 +2,42 @@
 use Test::More tests => 4;
 
 use IO::File;
-
-my $good_file = File::Spec->catfile(qw(t lib lib-good.pl));
-my $bad_file = File::Spec->catfile(qw(t lib lib-bad.pl));
-my $good_no_file = File::Spec->catfile(qw(t lib lib-no-good.pl));
-my $bad_no_file = File::Spec->catfile(qw(t lib lib-no-bad.pl));
-
-$good_file = IO::File->new(">$good_file") or die "cannot open lib-good.pl: $!";
-$bad_file = IO::File->new(">$bad_file") or die "cannot open lib-bad.pl: $!";
-$good_no_file = IO::File->new(">$good_no_file") or die "cannot open lib-no-good.pl: $!";
-$bad_no_file = IO::File->new(">$bad_no_file") or die "cannot open lib-no-bad.pl: $!";
-
 require CGI;
+
+use strict;
+
+my @filenames;
+my @filehandles;
+
+push @filenames, File::Spec->catfile(qw(t lib lib-good.pl));
+push @filenames, File::Spec->catfile(qw(t lib lib-bad.pl));
+push @filenames, File::Spec->catfile(qw(t lib lib-no-good.pl));
+push @filenames, File::Spec->catfile(qw(t lib lib-no-bad.pl));
+
+foreach my $file (@filenames) {
+  push @filehandles, IO::File->new(">$file") or die "cannot open file: $!";
+}
 
 my $good_test = $CGI::VERSION; 
 my $bad_test = $good_test + 1;
 my $good_no_test = $CGI::VERSION + 1; 
 my $bad_no_test = $CGI::VERSION;
 
-print $good_file <<EOF;
-use Acme::No;
+my $fh = $filehandles[0];
+print $fh <<EOF;
 use CGI $good_test;
 1;
 EOF
 
-print $bad_file <<EOF;
+$fh = $filehandles[1];
+print $fh <<EOF;
 use Acme::No;
 use CGI $bad_test;
 1;
 EOF
 
-print $good_no_file <<EOF;
+$fh = $filehandles[2];
+print $fh <<EOF;
 use Acme::No;
 no CGI $good_no_test;
 use CGI $good_test;
@@ -41,26 +46,26 @@ die unless UNIVERSAL::isa(\$q, 'CGI');
 1;
 EOF
 
-print $bad_no_file <<EOF;
+$fh = $filehandles[3];
+print $fh <<EOF;
 use Acme::No;
 no CGI $bad_no_test;
 1;
 EOF
 
-undef $good_file;
-undef $bad_file;
-undef $good_no_file;
-undef $bad_no_file;
+foreach my $filehandle (@filehandles) {
+  $filehandle->close;
+}
 
-my $rc = do 't/lib/lib-good.pl';
-ok($rc, "use an ok version of an external library");
+my $rc = do $filenames[0];
+ok($rc, "use CGI $good_test ($filenames[0])");
 
-$rc = do 't/lib/lib-bad.pl';
-ok(!$rc, "use a version of a library that's too high");
+$rc = do $filenames[1];
+ok(!$rc, "use CGI $bad_test ($filenames[1]");
 
-$rc = do 't/lib/lib-no-good.pl';
-ok($rc, "no an ok version of an external library");
+$rc = do $filenames[2];
+ok($rc, "no CGI $good_no_test ($filenames[2]");
 
-$rc = do 't/lib/lib-no-bad.pl';
-ok(!$rc, "no a version of a library that's too low");
+$rc = do $filenames[3];
+ok(!$rc, "no CGI $bad_no_test ($filenames[3]");
 

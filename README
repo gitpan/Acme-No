@@ -57,6 +57,18 @@ enter Acme::No
 
 Acme::No makes no() work the way I want it to.
 
+  $ perl -MAcme::No -e'no v5.9.0; print "ok\n"'
+  Perl v5.009 too high--version less than v5.009 required at -e line 0
+
+  $ perl -MAcme::No -e'no v5.9.1; print "ok\n"'
+  ok
+
+  $ perl -MAcme::No -e'no mod_perl 1.27; print "ok\n"'
+  mod_perl version 1.2701 too high--version less than 1.27 required at -e line 0
+
+  $ perl -MAcme::No -e'no mod_perl 2.0; print "ok\n"'
+  ok
+
 FEATURES/BUGS
 
 probably lots
@@ -66,7 +78,6 @@ SEE ALSO
 Filter::Util::Call, perldoc -f use, perldoc -f no,
 http://www.mail-archive.com/perl5-porters@perl.org/msg53742.html,
 http://www.mail-archive.com/perl5-porters@perl.org/msg53752.html,
-
 
 AUTHOR
 
